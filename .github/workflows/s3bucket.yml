@@ -1,28 +1,25 @@
-# Sample workflow to access AWS resources when workflow is tied to branch
-# The workflow Creates static website using aws s3
-name: AWS example workflow
+name: Deploy to S3
+
 on:
-  push
-env:
-  BUCKET_NAME : "<github-action-s3-bucket-web>"
-  AWS_REGION : "<us-east-1>"
-# permission can be added at job level or workflow level
-permissions:
-  id-token: write   # This is required for requesting the JWT
-  contents: read    # This is required for actions/checkout
+  push:
+    branches:
+      - main  # or your deployment branch
+
 jobs:
-  S3PackageUpload:
+  deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Git clone the repository
-        uses: actions/checkout@v4
-      - name: configure aws credentials
-        uses: aws-actions/configure-aws-credentials@v3
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Configure AWS credentials from IAM Role
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           role-to-assume: arn:aws:iam::074460675775:role/GitHubActionsS3DeployRole
-          role-session-name: samplerolesession
-          aws-region: ${{ env.us-east-1 }}
-      # Upload a file to AWS s3
-      - name:  Copy index.html to s3
+          aws-region: us-east-1  # replace with your region
+
+      - name: Sync files to S3
         run: |
-          aws s3 cp ./index.html s3://${{ env.github-action-s3-bucket-web }}/
+          aws s3 sync . s3://<github-action-s3-bucket-web> --delete
+        env:
+          AWS_DEFAULT_REGION: us-east-1
