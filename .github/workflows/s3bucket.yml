@@ -1,25 +1,37 @@
-name: Deploy to S3
+name: Deploy to S3 using IAM Role
 
 on:
   push:
     branches:
-      - main  # or your deployment branch
+      - main  # Deploy when pushing to the main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2  # Checks out your repository's code
 
-      - name: Configure AWS credentials from IAM Role
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          role-to-assume: arn:aws:iam::074460675775:role/GitHubActionsS3DeployRole
-          aws-region: us-east-1  # replace with your region
-
-      - name: Sync files to S3
+      - name: Get AWS temporary credentials
+        id: sts-get-session-token
         run: |
-          aws s3 sync . s3://<github-action-s3-bucket-web> --delete
+          ROLE_ARN="${{ secrets.AWS_ROLE_ARN }}"
+          CREDENTIALS=$(aws sts assume-role --role-arn "$ROLE_ARN" --role-session-name GitHubActionsSession --duration-seconds 900)
+          echo "::set-output name=AWS_ACCESS_KEY_ID::$(echo "$CREDENTIALS" | jq -r '.Credentials.AccessKeyId')"
+          echo "::set-output name=AWS_SECRET_ACCESS_KEY::$(echo "$CREDENTIALS" | jq -r '.Credentials.SecretAccessKey')"
+          echo "::set-output name=AWS_SESSION_TOKEN::$(echo "$CREDENTIALS" | jq -r '.Credentials.SessionToken')"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ steps.sts-get-session-token.outputs.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ steps.sts-get-session-token.outputs.AWS_SECRET_ACCESS_KEY }}
+          aws-session-token: ${{ steps.sts-get-session-token.outputs.AWS_SESSION_TOKEN }}
+          aws-region: YOUR_AWS_REGION  # Replace with your AWS region
+
+      - name: Sync to S3
+        run: |
+          aws s3 sync . s3://${{ secrets.AWS_S3_BUCKET }} --delete --acl public-read
         env:
-          AWS_DEFAULT_REGION: us-east-1
+          AWS_S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
