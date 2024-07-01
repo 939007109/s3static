@@ -28,7 +28,7 @@ jobs:
           aws-access-key-id: ${{ steps.sts-get-session-token.outputs.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ steps.sts-get-session-token.outputs.AWS_SECRET_ACCESS_KEY }}
           aws-session-token: ${{ steps.sts-get-session-token.outputs.AWS_SESSION_TOKEN }}
-          aws-region: YOUR_AWS_REGION  # Replace with your AWS region
+          aws-region: us-east-1  # Replace with your AWS region
 
       - name: Sync to S3
         run: |
